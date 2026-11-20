@@ -581,6 +581,43 @@ window.__ModuleLoader__.load({
         }
       }
 
+      /** How often the focus hand-off asks the side composer to take the caret. */
+      const FOCUS_ATTEMPTS = 12
+      /** Milliseconds between two focus attempts. */
+      const FOCUS_INTERVAL_MS = 60
+
+      /**
+       * Hand the keyboard to the side composer.
+       *
+       * The embedded Conversation mounts after the tab opens, and a composer
+       * never takes focus from another control on its own — so opening a side
+       * ask leaves the caret in the main composer, or nowhere. `SessionInput.focus()`
+       * is the public way to move it. Mounting is asynchronous and the right
+       * Sidebar focuses the pane once its DOM commits, so this keeps asking for
+       * a bounded window instead of once: the last ask wins.
+       * @param {string} childId - the side Session whose composer should take focus.
+       */
+      function focusSideComposer(childId) {
+        if (typeof childId !== 'string' || childId === '') return
+        if (typeof document === 'undefined') return
+        const conversation = ctx.get('conversation')
+        if (conversation === undefined) return
+        let tries = 0
+        const attempt = () => {
+          tries += 1
+          const scope = ctx.sessions.scope(childId)
+          if (scope !== undefined) {
+            try {
+              conversation.input.for(scope).focus()
+            } catch {
+              // No mounted composer on this attempt; the next one asks again.
+            }
+          }
+          if (tries < FOCUS_ATTEMPTS) setTimeout(attempt, FOCUS_INTERVAL_MS)
+        }
+        attempt()
+      }
+
       /**
        * Open the side ask of one conversation: reuse the mapped child or create
        * one, then reveal its tab. Never throws; failures surface as notices.
@@ -603,6 +640,7 @@ window.__ModuleLoader__.load({
           const reusable = reusableChild(sessionId)
           if (reusable !== undefined) {
             ctx.sidebarRight.openResource(reusable, { kind: KIND, preferNewPane: true })
+            focusSideComposer(parseAddress(reusable))
             return
           }
           await createAndOpen(sessionId, mounted)
@@ -693,6 +731,7 @@ window.__ModuleLoader__.load({
         map[sessionId] = address
         writeMap(map)
         if (movedDraft) clearParentDraft(sessionId, draft)
+        focusSideComposer(childId)
       }
 
       /**

@@ -22,9 +22,9 @@ browser halves.
   In the Desktop app, open **Plugins**, choose **Add plugin**, and paste
   `github:BullyHigh/dsh-side-ask`.
 
-- **Tarball** — download `dsh-side-ask-1.1.0.tgz` from
+- **Tarball** — download the `dsh-side-ask-<version>.tgz` asset from
   [Releases](https://github.com/BullyHigh/dsh-side-ask/releases), then:
-  `dsh plugin add /absolute/path/dsh-side-ask-1.1.0.tgz`, or pick the file in
+  `dsh plugin add /absolute/path/dsh-side-ask-<version>.tgz`, or pick the file in
   **Add plugin**.
 
 - **Source folder** — point **Add plugin** at a clone of this repository; that

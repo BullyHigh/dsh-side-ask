@@ -16,8 +16,8 @@
 
   桌面端也可以打开 **插件** → **添加插件**，粘贴 `github:BullyHigh/dsh-side-ask`。
 
-- **Tarball**：从 [Releases](https://github.com/BullyHigh/dsh-side-ask/releases) 下载 `dsh-side-ask-1.1.0.tgz`，然后
-  `dsh plugin add /绝对路径/dsh-side-ask-1.1.0.tgz`，或在**添加插件**里选择该文件。
+- **Tarball**：从 [Releases](https://github.com/BullyHigh/dsh-side-ask/releases) 下载 `dsh-side-ask-<version>.tgz`，然后
+  `dsh plugin add /绝对路径/dsh-side-ask-<version>.tgz`，或在**添加插件**里选择该文件。
 
 - **源码目录**：在**添加插件**里选中本仓库的克隆目录。这会安装一个链接，所以目录不能挪走。
 
