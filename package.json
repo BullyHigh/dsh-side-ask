@@ -1,0 +1,52 @@
+{
+  "name": "dsh-side-ask",
+  "version": "1.1.0",
+  "description": "Ask a read-only side question with the whole conversation in context on an empty side page; the unsent draft comes along.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Yi Zhang (https://github.com/BullyHigh)",
+  "homepage": "https://github.com/BullyHigh/dsh-side-ask#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BullyHigh/dsh-side-ask.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BullyHigh/dsh-side-ask/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "sidebar",
+    "side-question",
+    "read-only"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "README.md",
+    "README.zh.md",
+    "LICENSE",
+    "icon.svg"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "engines": {
+    "dsh": ">=0.2.2-rc.5 <0.3.0"
+  }
+}

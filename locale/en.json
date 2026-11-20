@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Side ask",
+    "description": "Adds a Side ask button to the conversation header and the Alt+Q shortcut. It copies the current conversation up to the present moment (including a turn that is still running) into a read-only side session and shows that session in a right-sidebar tab. The tab starts on an empty page — the copied history is not shown — and the unsent draft from the main composer is carried over. The main conversation keeps working. Closing the tab stops any running work and archives the side session silently; find it again under Show archived. The side session shares the working folder and is protected by the read-only sandbox with interactive approvals."
+  }
+}
