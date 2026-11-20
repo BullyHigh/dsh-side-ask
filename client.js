@@ -67,6 +67,10 @@ window.__ModuleLoader__.load({
       'toast.reopen': 'Reopen',
       'toast.reopenArchived': 'The side question was archived; find it under “Show archived”.',
       'toast.reopenSwitched': 'Switch back to that conversation to reopen the side question.',
+      'selection.quote': 'Quote text',
+      'selection.ask': 'Ask on the side',
+      'guide.title': 'Ask on the side',
+      'guide.description': 'Open a read-only side question beside this conversation',
     }
 
     const zh = {
@@ -88,6 +92,10 @@ window.__ModuleLoader__.load({
       'toast.reopen': '重新打开',
       'toast.reopenArchived': '提问已归档，可在「仅显示已归档」中找到它',
       'toast.reopenSwitched': '切回该对话后可重新打开提问',
+      'selection.quote': '引用文本',
+      'selection.ask': '侧栏提问',
+      'guide.title': '侧栏提问',
+      'guide.description': '在当前对话旁开一个只读的侧边提问',
     }
 
     /** Injected stylesheet; component-local styling without a build step. */
@@ -159,6 +167,63 @@ window.__ModuleLoader__.load({
   display: inline-flex;
   flex: none;
   align-items: center;
+}
+.dsh-side-ask-selection {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dsh-side-ask-selection-action {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 999px;
+  background: var(--dsw-alias-button-floating-fill, var(--dsw-alias-bg-layer-2));
+  box-shadow: var(--dsw-elevation-panel, 0 2px 8px rgba(0, 0, 0, 0.14));
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-xs-13, 13px/18px system-ui);
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .dsh-side-ask-selection-action:hover {
+    background: var(--dsw-alias-button-floating-hover, var(--dsw-alias-interactive-bg-hover));
+  }
+}
+.dsh-side-ask-selection-action:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+.dsh-side-ask-guide-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--dsw-alias-border-l2, var(--dsw-alias-border-l1));
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .dsh-side-ask-guide-card:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover, var(--dsw-alias-bg-layer-2));
+  }
+}
+.dsh-side-ask-guide-card:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.dsh-side-ask-guide-title {
+  font-size: 13px;
+  line-height: 18px;
+}
+.dsh-side-ask-guide-desc {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 16px;
 }
 .dsh-side-ask-trigger[data-busy="true"] svg {
   animation: dsh-side-ask-pulse 1.1s ease-in-out infinite;
@@ -585,6 +650,10 @@ window.__ModuleLoader__.load({
       const FOCUS_ATTEMPTS = 12
       /** Milliseconds between two focus attempts. */
       const FOCUS_INTERVAL_MS = 60
+      /** How often a quote insertion is retried while the side editor mounts. */
+      const QUOTE_ATTEMPTS = 25
+      /** Milliseconds between two quote-insertion attempts. */
+      const QUOTE_INTERVAL_MS = 60
 
       /**
        * Hand the keyboard to the side composer.
@@ -622,33 +691,90 @@ window.__ModuleLoader__.load({
        * Open the side ask of one conversation: reuse the mapped child or create
        * one, then reveal its tab. Never throws; failures surface as notices.
        * @param {string} sessionId - the conversation asking the side question.
-       * @returns {Promise<void>} completion of the whole sequence.
+       * @returns {Promise<string|undefined>} the side Session id, when it is open.
        */
       async function openAsk(sessionId) {
         if (typeof sessionId !== 'string' || sessionId === '') {
           notify('info', t('toast.noSession'))
-          return
+          return undefined
         }
         const mounted = () => ctx.sidebarRight.mounted.getSnapshot()
         if (mounted() !== sessionId) {
           notify('info', t('toast.sessionSwitched'))
-          return
+          return undefined
         }
-        if (opening.has(sessionId)) return
+        if (opening.has(sessionId)) return undefined
         opening.add(sessionId)
         try {
           const reusable = reusableChild(sessionId)
           if (reusable !== undefined) {
+            const childId = parseAddress(reusable)
             ctx.sidebarRight.openResource(reusable, { kind: KIND, preferNewPane: true })
-            focusSideComposer(parseAddress(reusable))
-            return
+            focusSideComposer(childId)
+            return childId
           }
-          await createAndOpen(sessionId, mounted)
+          return await createAndOpen(sessionId, mounted)
         } catch (error) {
           notify('error', t('toast.failed', { reason: messageOf(error) }))
+          return undefined
         } finally {
           opening.delete(sessionId)
         }
+      }
+
+      /**
+       * Ask on the side about text the user just selected: open or reveal the
+       * side ask, then quote the selection into its composer.
+       * @param {string} sessionId - the conversation the selection came from.
+       * @param {string} text - selected text.
+       * @returns {Promise<void>} completion.
+       */
+      async function askSelection(sessionId, text) {
+        if (typeof text !== 'string' || text.trim() === '') return
+        const childId = await openAsk(sessionId)
+        if (childId === undefined) return
+        quoteIntoComposer(childId, text)
+      }
+
+      /**
+       * Put a quote into one side composer once its editor exists.
+       *
+       * The tab body mounts asynchronously, so the facade may exist before any
+       * editor does; a refused insertion is retried for a bounded window and the
+       * composer takes the keyboard on the attempt that lands.
+       * @param {string} childId - the side Session.
+       * @param {string} text - selected text, inserted as an atomic quote.
+       */
+      function quoteIntoComposer(childId, text) {
+        const conversation = ctx.get('conversation')
+        if (conversation === undefined) return
+        let tries = 0
+        const attempt = () => {
+          tries += 1
+          let placed = false
+          const scope = ctx.sessions.scope(childId)
+          if (scope !== undefined) {
+            try {
+              const input = conversation.input.for(scope)
+              placed = input.insertQuote(text) === true
+              if (placed) input.focus()
+            } catch {
+              // No mounted editor yet; the next attempt asks again.
+            }
+          }
+          if (!placed && tries < QUOTE_ATTEMPTS) setTimeout(attempt, QUOTE_INTERVAL_MS)
+        }
+        attempt()
+      }
+
+      /**
+       * Whether one Session is the conversation filling the main column, as
+       * opposed to an embedded one such as this plugin's own side tab.
+       * @param {string} sessionId - Session to test.
+       * @returns {boolean} true for the on-screen main conversation.
+       */
+      function isMainConversation(sessionId) {
+        return ctx.sidebarRight.mounted.getSnapshot() === sessionId
       }
 
       /**
@@ -656,13 +782,13 @@ window.__ModuleLoader__.load({
        * unsent draft over, and reveal the new child on an empty page.
        * @param {string} sessionId - parent Session id.
        * @param {() => string|undefined} mounted - current on-screen Session reader.
-       * @returns {Promise<void>} completion.
+       * @returns {Promise<string|undefined>} the new child id, when it is open.
        */
       async function createAndOpen(sessionId, mounted) {
         const summary = ctx.sessions.list.getSnapshot().byId[sessionId]
         if (summary === undefined) {
           notify('info', t('toast.noSession'))
-          return
+          return undefined
         }
         const binding = ctx.sessions.binding(sessionId)
         if (binding !== undefined) await waitForEntries(binding)
@@ -686,12 +812,12 @@ window.__ModuleLoader__.load({
           }
         } catch (error) {
           notify('error', describeForkFailure(error))
-          return
+          return undefined
         }
         if (mounted() !== sessionId) {
           discardChild(childId)
           notify('info', t('toast.sessionSwitched'))
-          return
+          return undefined
         }
         const reference = ctx.sessions.retain(childId, { source: SOURCE })
         let movedDraft = false
@@ -707,7 +833,7 @@ window.__ModuleLoader__.load({
           reference.release()
           discardChild(childId)
           notify('error', t('toast.failed', { reason: messageOf(error) }))
-          return
+          return undefined
         }
         const address = addressOf(childId, quietTurn)
         pending.set(address, reference)
@@ -716,7 +842,7 @@ window.__ModuleLoader__.load({
           reference.release()
           discardChild(childId)
           notify('info', t('toast.sessionSwitched'))
-          return
+          return undefined
         }
         try {
           ctx.sidebarRight.openResource(address, { kind: KIND, preferNewPane: true })
@@ -725,13 +851,14 @@ window.__ModuleLoader__.load({
           reference.release()
           discardChild(childId)
           notify('error', t('toast.failed', { reason: messageOf(error) }))
-          return
+          return undefined
         }
         const map = readMap()
         map[sessionId] = address
         writeMap(map)
         if (movedDraft) clearParentDraft(sessionId, draft)
         focusSideComposer(childId)
+        return childId
       }
 
       /**
@@ -829,6 +956,8 @@ window.__ModuleLoader__.load({
         notify,
         shortcutBinding,
         openAsk,
+        askSelection,
+        isMainConversation,
         closeHandler,
         resourceProvider,
         dispose,
@@ -859,6 +988,88 @@ window.__ModuleLoader__.load({
         strokeWidth: '1.1',
         strokeLinecap: 'round',
       }))
+    }
+
+    /**
+     * The selection surface that replaces the host's single Quote action.
+     *
+     * The shipped Quote plugin still decides when a selection is eligible and
+     * where the surface is placed; this component only draws what the user can
+     * do with the selection: quote it exactly as before, or ask on the side.
+     * Slot priority puts it ahead of the host's button, and unloading this
+     * plugin restores that button.
+     */
+    function SideAskSelectionActions(props) {
+      const { sessionId, readText, clearSelection, dismiss, inputActions, useSession, t } = props
+      const enabled = useSession((session) => session !== undefined && session.removed !== true
+        && (session.subagent === null || session.subagent.address.mode === 'continuable'))
+      React.useEffect(() => {
+        if (!enabled) dismiss()
+      }, [enabled, dismiss])
+      if (!enabled) return null
+      const askable = runtime.isMainConversation(sessionId)
+      const quote = () => {
+        const text = readText()
+        if (text === null) {
+          dismiss()
+          return
+        }
+        if (!inputActions.insertQuote(text)) return
+        clearSelection()
+        dismiss()
+      }
+      const ask = () => {
+        const text = readText()
+        if (text === null) {
+          dismiss()
+          return
+        }
+        clearSelection()
+        dismiss()
+        runtime.askSelection(sessionId, text)
+      }
+      return h('div', { className: 'dsh-side-ask-selection', 'data-side-ask-selection': '' },
+        h('button', {
+          type: 'button',
+          className: 'dsh-side-ask-selection-action',
+          onPointerDown: (event) => { event.preventDefault() },
+          onClick: quote,
+        }, t('selection.quote')),
+        askable ? h('button', {
+          type: 'button',
+          className: 'dsh-side-ask-selection-action',
+          'data-side-ask': '',
+          onPointerDown: (event) => { event.preventDefault() },
+          onClick: ask,
+        }, t('selection.ask')) : null)
+    }
+
+    /**
+     * The guide page's card for this tab type: it opens (or reveals) the side ask
+     * of the Session whose right Sidebar hosts the guide, then closes the guide.
+     */
+    function SideAskGuideCard(props) {
+      const { title, description, sessionId, useTabInfo } = props
+      const info = useTabInfo()
+      const [busy, setBusy] = React.useState(false)
+      return h('button', {
+        type: 'button',
+        className: 'dsh-side-ask-guide-card',
+        'data-side-ask': '',
+        disabled: busy,
+        onClick: async () => {
+          if (busy) return
+          setBusy(true)
+          const childId = await runtime.openAsk(sessionId)
+          if (childId !== undefined) {
+            info.tab.actions.close()
+            return
+          }
+          setBusy(false)
+        },
+      },
+      h('span', { className: 'dsh-side-ask-guide-title' }, title),
+      description === undefined ? null : h('span', { className: 'dsh-side-ask-guide-desc' }, description))
     }
 
     /** Header action: open (or reveal) the current conversation's side ask. */
@@ -1070,6 +1281,12 @@ window.__ModuleLoader__.load({
           priority: 'builtin',
           canOpen: address => parseAddress(address) !== undefined,
           title: () => t('tab.title'),
+          guide: [{
+            id: 'ask',
+            order: 40,
+            title: () => t('guide.title'),
+            description: () => t('guide.description'),
+          }],
         }), 'side-ask: tab type')
         ctx.effect(
           () => ctx.sidebarRight.registerCloseHandler(KIND, runtime.closeHandler),
@@ -1090,6 +1307,27 @@ window.__ModuleLoader__.load({
           key: TAB_ID,
           locale: NS,
         }, SideAskTabTitle))
+        ctx.slots.inject('sidebar.right.tab.guide.entry', () => ctx.slots.register({
+          name: 'sidebar.right.tab.guide.entry',
+          key: TAB_ID,
+          locale: NS,
+        }, SideAskGuideCard))
+        // Replaces the host's single Quote action with the same quote plus this
+        // plugin's side ask. Lower priority wins, so the host's own button (0)
+        // never draws a second, overlapping surface.
+        ctx.slots.inject('conversation.chat.text-interaction', () => {
+          try {
+            return ctx.slots.register({
+              name: 'conversation.chat.text-interaction',
+              key: 'quote',
+              priority: -100,
+              locale: NS,
+            }, SideAskSelectionActions)
+          } catch {
+            // A host that refuses the takeover keeps its own selection surface.
+            return () => {}
+          }
+        })
         ctx.slots.inject('conversation.session.header.actions', () => ctx.slots.register({
           name: 'conversation.session.header.actions',
           id: 'side-ask',

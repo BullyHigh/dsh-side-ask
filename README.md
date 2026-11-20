@@ -41,6 +41,16 @@ different DSH release may change those and need an update.
   browser. Change it under **Settings → Shortcuts** (`sideAsk.open`). Pressing
   it again reuses the existing side question for that conversation instead of
   creating another.
+- **Selection menu** — select text in the transcript and the floating menu
+  offers **Quote text** and **Ask on the side**. The side-ask action opens (or
+  reveals) the side question and puts the selection into its composer as a
+  quote, ready for your question.
+- **Right Sidebar's add menu** — the guide page lists an **Ask on the side**
+  card next to the shipped tools.
+
+The selection menu is the host's own Quote interaction with this plugin's
+surface drawn in front of it: quoting keeps the host's behaviour, and unloading
+the plugin restores the host's own button.
 - The right-sidebar tab hosts the ordinary conversation UI (scroll, stop,
   permission control) with a **Read-only** badge in its tab header. It opens on
   an empty transcript: only the turns you ask in the side session appear.
