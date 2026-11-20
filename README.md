@@ -1,5 +1,7 @@
 # Side ask (侧边提问)
 
+[English](README.md) | [中文](README.zh.md)
+
 Ask a read-only side question about the current conversation while that
 conversation keeps working. The side question runs in its own session, shown in
 a right-sidebar tab. The tab starts on an empty page (the copied history is not
