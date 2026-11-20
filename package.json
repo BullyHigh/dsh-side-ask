@@ -1,6 +1,6 @@
 {
   "name": "dsh-side-ask",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Ask a read-only side question with the whole conversation in context on an empty side page; the unsent draft comes along.",
   "type": "module",
   "license": "MIT",

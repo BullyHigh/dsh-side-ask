@@ -13,19 +13,20 @@ browser halves.
 
 ## Install
 
-- **From GitHub** — the tarball-free route:
+- **Desktop app** — open **Plugins**, choose **Add plugin** (or the arrow →
+  **Install a third-party plugin**), and paste `github:BullyHigh/dsh-side-ask`.
+  The Desktop profile is managed by the app, so the CLI cannot install into it.
+
+- **CLI** — for a web or npm-style profile, name the profile you run:
 
   ```sh
-  dsh plugin add github:BullyHigh/dsh-side-ask
+  dsh plugin --profile web add github:BullyHigh/dsh-side-ask
   ```
 
-  In the Desktop app, open **Plugins**, choose **Add plugin**, and paste
-  `github:BullyHigh/dsh-side-ask`.
-
 - **Tarball** — download the `dsh-side-ask-<version>.tgz` asset from
-  [Releases](https://github.com/BullyHigh/dsh-side-ask/releases), then:
-  `dsh plugin add /absolute/path/dsh-side-ask-<version>.tgz`, or pick the file in
-  **Add plugin**.
+  [Releases](https://github.com/BullyHigh/dsh-side-ask/releases) and pick the
+  file in **Add plugin** (CLI: `dsh plugin --profile <name> add
+  /absolute/path/dsh-side-ask-<version>.tgz`).
 
 - **Source folder** — point **Add plugin** at a clone of this repository; that
   installs a link, so keep the folder where it is.

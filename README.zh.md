@@ -8,16 +8,15 @@
 
 ## 安装
 
-- **从 GitHub 安装**（推荐）：
+- **桌面端**：打开 **插件** → **添加插件**（或右侧箭头 → **安装第三方插件**），粘贴 `github:BullyHigh/dsh-side-ask`。Desktop 的 profile 由应用独占管理，命令行装不进去。
+
+- **命令行**：针对 web（或 npm 安装）的 profile，要指明 profile 名：
 
   ```sh
-  dsh plugin add github:BullyHigh/dsh-side-ask
+  dsh plugin --profile web add github:BullyHigh/dsh-side-ask
   ```
 
-  桌面端也可以打开 **插件** → **添加插件**，粘贴 `github:BullyHigh/dsh-side-ask`。
-
-- **Tarball**：从 [Releases](https://github.com/BullyHigh/dsh-side-ask/releases) 下载 `dsh-side-ask-<version>.tgz`，然后
-  `dsh plugin add /绝对路径/dsh-side-ask-<version>.tgz`，或在**添加插件**里选择该文件。
+- **Tarball**：从 [Releases](https://github.com/BullyHigh/dsh-side-ask/releases) 下载 `dsh-side-ask-<version>.tgz`，在**添加插件**里选择该文件（命令行：`dsh plugin --profile <名字> add /绝对路径/dsh-side-ask-<version>.tgz`）。
 
 - **源码目录**：在**添加插件**里选中本仓库的克隆目录。这会安装一个链接，所以目录不能挪走。
 
